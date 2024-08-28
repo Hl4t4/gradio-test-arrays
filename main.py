@@ -1,4 +1,9 @@
 import wx
+from mygrid import MyGrid
+from dates import getInvalidDates, get_some_years
+from bd import makeQueryMandanteCalendario
+
+
 
 class MainFrame(wx.Frame):
     """
@@ -15,7 +20,7 @@ class MainFrame(wx.Frame):
         self.CreateStatusBar()
         self.SetStatusText("Working!")
 
-    def makeTextArea(self, panel):
+    def makeVboxLines(self, panel):
         self.input_text_area = wx.TextCtrl(panel, style=wx.TE_MULTILINE, size=(300, 200))
         self.output_text_area = wx.TextCtrl(panel, style=wx.TE_MULTILINE, size=(300, 200))
         
@@ -39,35 +44,6 @@ class MainFrame(wx.Frame):
         vbox.Add(self.output_text_area, proportion = 1, flag = wx.EXPAND | wx.ALL, border = 10 )
 
         panel.SetSizer(vbox)
-        return vbox
-
-    def makeTabs(self):
-        notebook = wx.Notebook(self)
-
-        tab1 = wx.Panel(notebook)
-        notebook.AddPage(tab1, "Listados")
-
-        # vbox1 = wx.BoxSizer(wx.VERTICAL)
-        # label1 = wx.StaticText(tab1, label="This is the first tab")
-        # vbox1.Add(label1, flag=wx.ALL, border = 10)
-        # tab1.SetSizer(vbox1)
-
-        vbox1 = self.makeTextArea(tab1)
-
-        tab2 = wx.Panel(notebook)
-        notebook.AddPage(tab2, "Calendario de Cierre")
-
-        vbox2 = wx.BoxSizer(wx.VERTICAL)
-        label2 = wx.StaticText(tab2, label="This is the second tab")
-        vbox2.Add(label2, flag=wx.ALL, border = 10)
-        tab2.SetSizer(vbox2)
-
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(notebook, 1, wx.EXPAND)
-        self.SetSizerAndFit(sizer)
-
-        self.SetSize((400, 300))
-        self.Centre()
 
     def textTransformations(self, event, flag:int):
         # Retrieve the text from the text area
@@ -94,12 +70,185 @@ class MainFrame(wx.Frame):
         for unique in unique_values:
             output += unique + separation
         return output.strip(separation)
+    
+    def makeVboxCalendar(self, panel):
+        # Create a grid (spreadsheet) control
+        #self.grid = gridlib.Grid(panel)
+        self.grid = MyGrid(panel)
+        self.grid.CreateGrid(24, 6)
+        
+        # Set the number of rows and columns
+        #self.grid.CreateGrid(24, 6)  # 5 rows, 3 columns
+        
+        # Set column labels
+        self.grid.SetColLabelValue(0, "Razon Social")
+        self.grid.SetColLabelValue(1, "Fecha Pago")
+        self.grid.SetColLabelValue(2, "Fecha Apertura")
+        self.grid.SetColLabelValue(3, "Fecha Informe")
+        self.grid.SetColLabelValue(4, "Fecha Cierre")
+        self.grid.SetColLabelValue(5, "Mandante ID")
+        self.grid.AutoSizeColumns()
+
+        #self.grid.Bind(MyGrid.EVT_GRID_CELL_CHANGING, self.OnCellValueChanged)
+        
+        # Set some cell values
+        #self.grid.SetCellValue(0, 0, "Alice")
+
+        self.add_row_button = wx.Button(panel, label="Add Row")
+        self.add_row_button.Bind(wx.EVT_BUTTON, self.OnAddRow)
+        
+        # Add a button to add a column
+        self.add_col_button = wx.Button(panel, label="Add Column")
+        self.add_col_button.Bind(wx.EVT_BUTTON, self.OnAddColumn)
+
+        
+        # Create a button to show the current grid data
+        self.show_button = wx.Button(panel, label="Show Data")
+        self.show_button.Bind(wx.EVT_BUTTON, self.OnShowData)
+
+        # Add a button to set a value to the selected range
+        self.set_value_button = wx.Button(panel, label="Set Value")
+        self.set_value_button.Bind(wx.EVT_BUTTON, self.OnSetValue)
+
+        # Create a wx.Choice control
+        self.listed_years = get_some_years()
+        self.choice = wx.Choice(panel, choices=self.listed_years)
+        self.choice.Bind(wx.EVT_CHOICE, self.OnChoice)
+        self.choice.SetSelection(3)
+        self.invalid_dates = getInvalidDates(self.listed_years[3])
+        self.grid.invalid_dates = self.invalid_dates
+
+
+        vbox_buttons = wx.BoxSizer(wx.VERTICAL)
+        vbox_buttons.Add(self.add_row_button, flag=wx.ALL | wx.CENTER, border=10)
+        vbox_buttons.Add(self.add_col_button, flag=wx.ALL | wx.CENTER, border=10)
+        vbox_buttons.Add(self.show_button, flag=wx.ALL | wx.CENTER, border=10)
+        vbox_buttons.Add(self.set_value_button, flag=wx.ALL | wx.CENTER, border=5)
+        vbox_buttons.Add(self.choice, flag=wx.ALL | wx.CENTER, border=10)
+
+        # Arrange controls in a vertical box sizer
+        vbox = wx.BoxSizer(wx.HORIZONTAL)
+        vbox.Add(self.grid, proportion=1, flag=wx.EXPAND | wx.ALL, border=10)
+        vbox.Add(vbox_buttons, flag=wx.ALL | wx.EXPAND, border=10 )
+        
+        panel.SetSizer(vbox)
+
+    def OnAddRow(self, event):
+        # Get the current number of rows
+        num_rows = self.grid.GetNumberRows()
+        
+        # Append a new row
+        self.grid.AppendRows(1)
+        
+        # Optionally, you can initialize the new row with some default values
+        for col in range(self.grid.GetNumberCols()):
+            self.grid.SetCellValue(num_rows, col, f"Row {num_rows} Col {col}")
+
+    def OnAddColumn(self, event):
+        # Get the current number of columns
+        num_cols = self.grid.GetNumberCols()
+        
+        # Append a new column
+        self.grid.AppendCols(1)
+        
+        # Set a label for the new column
+        self.grid.SetColLabelValue(num_cols, f"Column {num_cols}")
+        
+        # Optionally, you can initialize the new column with some default values
+        for row in range(self.grid.GetNumberRows()):
+            self.grid.SetCellValue(row, num_cols, f"Row {row} Col {num_cols}")
+
+    def OnSetValue(self, event):
+        # Prompt the user for the value to set
+        value_to_set = wx.GetTextFromUser("Enter the value to set:", "Set Value")
+        if not value_to_set:
+            return  # If the user cancels or enters an empty value, do nothing
+
+        # Get the selected range
+        selection = self.grid.get_selection()
+        if not selection:
+            return  # If no selection, do nothing
+
+        start_row, start_col, end_row, end_col = selection
+
+        # Set the value for each cell in the selected range
+        for row in range(start_row, end_row + 1):
+            for col in range(start_col, end_col + 1):
+                self.grid.SetCellValue(row, col, value_to_set)
+
+        #wx.MessageBox("Value set successfully!", "Info", wx.OK | wx.ICON_INFORMATION)
+
+    def OnChoice(self, event):
+        selection = self.choice.GetStringSelection()
+        self.invalid_dates = getInvalidDates(selection)
+        self.grid.invalid_dates = self.invalid_dates
+        #wx.MessageBox(f"You selected: {selection}", "Info", wx.OK | wx.ICON_INFORMATION)
+
+
+    def OnShowData(self, event):
+        # Get data from the grid
+        data = []
+        for row in range(self.grid.GetNumberRows()):
+            row_data = [self.grid.GetCellValue(row, col) for col in range(self.grid.GetNumberCols())]
+            data.append(row_data)
+        saved = makeQueryMandanteCalendario(data)
+        if (saved):
+            wx.MessageBox(f"Se ha guardado un archivo sql", "Data", wx.OK | wx.ICON_INFORMATION)
+        # Display the data in a message box
+        # data_str = "\n".join([", ".join(row) for row in data])
+        # wx.MessageBox(f"Grid Data:\n{data_str}", "Data", wx.OK | wx.ICON_INFORMATION)
+
+    def on_change(self, event):
+        row = event.GetRow()
+        col = event.GetCol()
+        value = self.grid.GetCellValue(row, col)
+        wx.MessageBox(f"You selected: {self.invalid_dates}", "Info", wx.OK | wx.ICON_INFORMATION)
+        
+        # Example condition: change background color if value contains '5'
+        if value in self.invalid_dates:
+            bg_color = wx.Colour(255, 0, 0)  # Red background
+        else:
+            bg_color = wx.Colour(255, 255, 255)  # White background
+        # Create a custom renderer and set the background color
+        self.grid.UpdateCellAttr(row, col, bg_color)
+        # attr = MyGrid.GridCellAttr()
+        # attr.SetBackgroundColour(bg_color)
+        # self.grid.SetCellAttr(row, col, attr)
+
+        #event.Skip()  # Continue to propagate the event
 
     def clipboardOutput(self, text):
         if wx.TheClipboard.Open():
             wx.TheClipboard.Clear()
             wx.TheClipboard.SetData(wx.TextDataObject(text))
             wx.TheClipboard.Close()
+
+    def makeTabs(self):
+        notebook = wx.Notebook(self)
+
+        tab1 = wx.Panel(notebook)
+        notebook.AddPage(tab1, "Listados")
+
+        self.makeVboxLines(tab1)
+
+        tab2 = wx.Panel(notebook)
+        notebook.AddPage(tab2, "Calendario de Cierre")
+
+        self.makeVboxCalendar(tab2)
+
+        # vbox2 = wx.BoxSizer(wx.VERTICAL)
+        # label2 = wx.StaticText(tab2, label="This is the second tab")
+        # vbox2.Add(label2, flag=wx.ALL, border = 10)
+        # tab2.SetSizer(vbox2)
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(notebook, 1, wx.EXPAND)
+        self.SetSizerAndFit(sizer)
+
+        self.SetSize((400, 300))
+        self.Centre()
+
+
 
 if __name__ == '__main__':
     # When this module is run (not imported) then create the app, the
