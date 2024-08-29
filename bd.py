@@ -8,6 +8,27 @@ def is_valid_date(date_string: str) -> bool:
     except ValueError:
         return False
 
+def checkNextDate(col1:str, col2:str, col3:str, col4:str) -> bool:
+    col1_time = datetime.strptime(col1, '%Y-%m-%d')
+    col2_time = datetime.strptime(col2, '%Y-%m-%d')
+    col3_time = datetime.strptime(col3, '%Y-%m-%d')
+    col4_time = datetime.strptime(col4, '%Y-%m-%d')
+    if col1_time > col3_time or col1_time > col4_time:
+        return False
+    if col2_time > col3_time or col2_time > col4_time:
+        return False
+    if col1_time != col2_time or col4_time != col4_time:
+        return False
+    return True
+
+def checkAllDates(data_in_rows: list):
+    errors = []
+    for index, row in enumerate(data_in_rows):
+        if is_valid_date(row[1]) and is_valid_date(row[2]) and is_valid_date(row[3]) and is_valid_date(row[4]) and row[5].isnumeric():
+            if not checkNextDate(row[1], row[2], row[3], row[4]):
+                errors.append(index+1)
+    return errors
+
 def createSQLCalendarioCierre(data_in_rows: list, template: str) -> list:
     sql_query = []
     for row in data_in_rows:

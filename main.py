@@ -2,7 +2,7 @@ import wx
 import wx.grid
 from mygrid import MyGrid
 from dates import getInvalidDates, get_some_years, turnAroundDate
-from bd import makeQueryMandanteCalendario
+from bd import makeQueryMandanteCalendario, checkAllDates
 
 
 
@@ -18,8 +18,8 @@ class MainFrame(wx.Frame):
         self.makeTabs()
 
         # and a status bar
-        self.CreateStatusBar()
-        self.SetStatusText("Working!")
+        # self.CreateStatusBar()
+        # self.SetStatusText("Working!")
 
     def makeVboxLines(self, panel):
         self.input_text_area = wx.TextCtrl(panel, style=wx.TE_MULTILINE, size=(300, 200))
@@ -120,6 +120,8 @@ class MainFrame(wx.Frame):
         self.choice = wx.Choice(panel, choices=self.listed_years)
         self.choice.Bind(wx.EVT_CHOICE, self.OnChoice)
         self.choice.SetSelection(3)
+        self.CreateStatusBar()
+        self.SetStatusText(f"El año {self.listed_years[3]} se encuentra cargado para validar feriados")
         self.invalid_dates = getInvalidDates(self.listed_years[3])
         self.grid.invalid_dates = self.invalid_dates
 
@@ -209,16 +211,22 @@ class MainFrame(wx.Frame):
         selection = self.choice.GetStringSelection()
         self.invalid_dates = getInvalidDates(selection)
         self.grid.invalid_dates = self.invalid_dates
+        self.SetStatusText(f"El año {selection} se encuentra cargado para validar feriados")
         #wx.MessageBox(f"You selected: {selection}", "Info", wx.OK | wx.ICON_INFORMATION)
 
 
     def OnShowData(self, event):
         # Get data from the grid
         data = []
+        saved = False
         for row in range(self.grid.GetNumberRows()):
             row_data = [self.grid.GetCellValue(row, col) for col in range(self.grid.GetNumberCols())]
             data.append(row_data)
-        saved = makeQueryMandanteCalendario(data)
+        errors = checkAllDates(data)
+        if len(errors) > 0:
+            wx.MessageBox(f"Errores de logica de fechas en las filas :\n{errors}", "Errores de logica de fechas", wx.OK | wx.ICON_INFORMATION)  
+        else:
+            saved = makeQueryMandanteCalendario(data)
         if (saved):
             wx.MessageBox(f"Se ha guardado un archivo sql", "Data", wx.OK | wx.ICON_INFORMATION)
         # Display the data in a message box
