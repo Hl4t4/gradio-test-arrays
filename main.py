@@ -1,6 +1,7 @@
 import wx
+import wx.grid
 from mygrid import MyGrid
-from dates import getInvalidDates, get_some_years
+from dates import getInvalidDates, get_some_years, turnAroundDate
 from bd import makeQueryMandanteCalendario
 
 
@@ -94,21 +95,25 @@ class MainFrame(wx.Frame):
         # Set some cell values
         #self.grid.SetCellValue(0, 0, "Alice")
 
-        self.add_row_button = wx.Button(panel, label="Add Row")
+        self.add_row_button = wx.Button(panel, label="Agregar Fila")
         self.add_row_button.Bind(wx.EVT_BUTTON, self.OnAddRow)
         
         # Add a button to add a column
-        self.add_col_button = wx.Button(panel, label="Add Column")
+        self.add_col_button = wx.Button(panel, label="Agregar Columna")
         self.add_col_button.Bind(wx.EVT_BUTTON, self.OnAddColumn)
 
         
         # Create a button to show the current grid data
-        self.show_button = wx.Button(panel, label="Show Data")
+        self.show_button = wx.Button(panel, label="Obtener SQL")
         self.show_button.Bind(wx.EVT_BUTTON, self.OnShowData)
 
         # Add a button to set a value to the selected range
-        self.set_value_button = wx.Button(panel, label="Set Value")
+        self.set_value_button = wx.Button(panel, label="Dar valor a selección")
         self.set_value_button.Bind(wx.EVT_BUTTON, self.OnSetValue)
+
+        # Add a button to set a value to the selected range
+        self.turnaround_date_button = wx.Button(panel, label="Dar vuelta fechas")
+        self.turnaround_date_button.Bind(wx.EVT_BUTTON, self.OnTurnaroundDate)
 
         # Create a wx.Choice control
         self.listed_years = get_some_years()
@@ -122,8 +127,9 @@ class MainFrame(wx.Frame):
         vbox_buttons = wx.BoxSizer(wx.VERTICAL)
         vbox_buttons.Add(self.add_row_button, flag=wx.ALL | wx.CENTER, border=10)
         vbox_buttons.Add(self.add_col_button, flag=wx.ALL | wx.CENTER, border=10)
-        vbox_buttons.Add(self.show_button, flag=wx.ALL | wx.CENTER, border=10)
         vbox_buttons.Add(self.set_value_button, flag=wx.ALL | wx.CENTER, border=5)
+        vbox_buttons.Add(self.turnaround_date_button, flag=wx.ALL | wx.CENTER, border=5)
+        vbox_buttons.Add(self.show_button, flag=wx.ALL | wx.CENTER, border=10)
         vbox_buttons.Add(self.choice, flag=wx.ALL | wx.CENTER, border=10)
 
         # Arrange controls in a vertical box sizer
@@ -177,6 +183,27 @@ class MainFrame(wx.Frame):
                 self.grid.SetCellValue(row, col, value_to_set)
 
         #wx.MessageBox("Value set successfully!", "Info", wx.OK | wx.ICON_INFORMATION)
+
+    def OnTurnaroundDate(self, event):
+        # Get the selected range
+        selection = self.grid.get_selection()
+        if not selection:
+            return  # If no selection, do nothing
+
+        start_row, start_col, end_row, end_col = selection
+
+        # Set the value for each cell in the selected range
+        for row in range(start_row, end_row + 1):
+            for col in range(start_col, end_col + 1):
+                new_value = turnAroundDate(self.grid.GetCellValue(row, col))
+                self.grid.SetCellValue(row, col, new_value)
+                if new_value in self.invalid_dates:
+                    bg_color = wx.Colour(255, 0, 0)  # Red background
+                else:
+                    bg_color = wx.Colour(255, 255, 255)  # White background
+                # Create a custom renderer and set the background color
+                self.grid.UpdateCellAttr(row, col, bg_color)
+
 
     def OnChoice(self, event):
         selection = self.choice.GetStringSelection()

@@ -53,6 +53,12 @@ def getInvalidDates(year) -> list:
 def isInvalidDate(date, invalidDates) -> bool:
     return False if date in invalidDates else True
 
+def turnAroundDate(date_string:str) -> str:
+    if date_string.count('-') == 2:
+        splitted_date = date_string.split(sep='-')
+        return splitted_date[2] + '-' + splitted_date[1] + '-' + splitted_date[0]
+    return date_string
+
 
 if __name__ == '__main__':
     # Example usage
