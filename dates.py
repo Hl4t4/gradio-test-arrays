@@ -1,6 +1,9 @@
 import requests
 from datetime import datetime, date, timedelta
 
+holidays2025 = [{'fecha': '2025-01-01'}, {'fecha': '2025-04-18'}, {'fecha': '2025-04-19'}, {'fecha': '2025-05-01'}, {'fecha': '2025-05-21'}, {'fecha': '2025-06-20'}, {'fecha': '2025-06-29'}, {'fecha': '2025-06-29'}, {'fecha': '2025-07-16'}, {'fecha': '2025-08-15'}, {'fecha': '2025-09-18'}, {'fecha': '2025-09-19'}, {'fecha': '2025-10-12'}, {'fecha': '2025-10-31'}, {'fecha': '2025-11-01'}, {'fecha': '2025-11-16'}, {'fecha': '2025-12-08'}, {'fecha': '2025-12-14'}, {'fecha': '2025-12-25'}] 
+holidays2026 = [{'fecha': '2026-01-01'}, {'fecha': '2026--3 '}, {'fecha': '2026--4 '}, {'fecha': '2026-05-01'}, {'fecha': '2026-05-21'}, {'fecha': '2026-06-21'}, {'fecha': '2026-06-29'}, {'fecha': '2026-07-16'}, {'fecha': '2026-08-15'}, {'fecha': '2026-09-18'}, {'fecha': '2026-09-19'}, {'fecha': '2026-10-12'}, {'fecha': '2026-10-31'}, {'fecha': '2026-11-01'}, {'fecha': '2026-12-08'}, {'fecha': '2026-12-25'}]
+
 def get_holidays(year):
     url = f"https://apis.digital.gob.cl/fl/feriados/{year}"
     
@@ -29,8 +32,14 @@ def get_holidays(year):
     except requests.exceptions.RequestException as err:
         print(f"OOps: Something Else: {err}")
 
-def parseDates(dates) -> list:
-    return [date['fecha'] for date in dates]
+def parseDates(dates, year) -> list:
+    aux_dates = dates
+    if "error" in dates:
+        if year == "2025":
+            aux_dates = holidays2025
+        elif year == "2026":
+            aux_dates = holidays2026
+    return [date['fecha'] for date in aux_dates]
 
 def get_some_years() -> list:
     current_year = datetime.now().year
@@ -48,7 +57,7 @@ def get_weekends(year) -> list:
     return weekends
 
 def getInvalidDates(year) -> list:
-    return ["holidays"] + parseDates(get_holidays(year)) + ["weekends"] + get_weekends(year)
+    return ["holidays"] + parseDates(get_holidays(year), year) + ["weekends"] + get_weekends(year)
 
 def isInvalidDate(date, invalidDates) -> bool:
     return False if date in invalidDates else True

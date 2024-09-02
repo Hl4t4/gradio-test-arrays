@@ -34,6 +34,11 @@ class MainFrame(wx.Frame):
         self.btn_unique = wx.Button(panel, label="> Unico >")
         self.btn_unique.Bind(wx.EVT_BUTTON, lambda event: self.textTransformations(event, 2))
 
+        max_width = max(self.btn_all.GetBestSize().width, self.btn_commas.GetBestSize().width, self.btn_unique.GetBestSize().width)
+        self.btn_all.SetMinSize(wx.Size(max_width, self.btn_all.GetBestSize().height))
+        self.btn_commas.SetMinSize(wx.Size(max_width, self.btn_commas.GetBestSize().height))
+        self.btn_unique.SetMinSize(wx.Size(max_width, self.btn_unique.GetBestSize().height))
+
         vbox_buttons = wx.BoxSizer(wx.VERTICAL)
         vbox_buttons.Add(self.btn_all, flag=wx.ALL | wx.CENTER, border=10)
         vbox_buttons.Add(self.btn_commas, flag=wx.ALL | wx.CENTER, border=10)
@@ -125,10 +130,20 @@ class MainFrame(wx.Frame):
         self.invalid_dates = getInvalidDates(self.listed_years[3])
         self.grid.invalid_dates = self.invalid_dates
 
+        # Determining the max widht and height among buttons
+        max_width = max(self.add_row_button.GetBestSize().width, self.set_value_button.GetBestSize().width, self.turnaround_date_button.GetBestSize().width, self.show_button.GetBestSize().width)
+        # max_height = max(self.add_row_button.GetBestSize().height, self.set_value_button.GetBestSize().height, self.turnaround_date_button.GetBestSize().height, self.show_button.GetBestSize().width)
+
+        self.add_row_button.SetMinSize(wx.Size(max_width, self.add_row_button.GetBestSize().height))
+        self.set_value_button.SetMinSize(wx.Size(max_width, self.set_value_button.GetBestSize().height))
+        self.turnaround_date_button.SetMinSize(wx.Size(max_width, self.turnaround_date_button.GetBestSize().height))
+        self.show_button.SetMinSize(wx.Size(max_width, self.show_button.GetBestSize().height))
+        self.choice.SetMinSize(wx.Size(max_width, self.choice.GetBestSize().height))
+
 
         vbox_buttons = wx.BoxSizer(wx.VERTICAL)
         vbox_buttons.Add(self.add_row_button, flag=wx.ALL | wx.CENTER, border=10)
-        vbox_buttons.Add(self.add_col_button, flag=wx.ALL | wx.CENTER, border=10)
+        # vbox_buttons.Add(self.add_col_button, flag=wx.ALL | wx.CENTER, border=10)
         vbox_buttons.Add(self.set_value_button, flag=wx.ALL | wx.CENTER, border=5)
         vbox_buttons.Add(self.turnaround_date_button, flag=wx.ALL | wx.CENTER, border=5)
         vbox_buttons.Add(self.show_button, flag=wx.ALL | wx.CENTER, border=10)
@@ -149,8 +164,8 @@ class MainFrame(wx.Frame):
         self.grid.AppendRows(1)
         
         # Optionally, you can initialize the new row with some default values
-        for col in range(self.grid.GetNumberCols()):
-            self.grid.SetCellValue(num_rows, col, f"Row {num_rows} Col {col}")
+        # for col in range(self.grid.GetNumberCols()):
+        #     self.grid.SetCellValue(num_rows, col, f"Row {num_rows} Col {col}")
 
     def OnAddColumn(self, event):
         # Get the current number of columns
