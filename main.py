@@ -1,5 +1,6 @@
 import wx
 import wx.grid
+from datetime import datetime
 from mygrid import MyGrid
 from openpyxl import load_workbook, Workbook
 import os
@@ -343,8 +344,8 @@ class MainFrame(wx.Frame):
             26 : 'Fecha Ingreso a la Obra'
         }
         nullable = [
-            0,
-            23
+            1,
+            24
         ]
         content = []
         errors = []
@@ -358,7 +359,10 @@ class MainFrame(wx.Frame):
                     continue
                 else:
                     print("else- if nullable")
-                    processed_row[column_headers[index]] = cell
+                    if isinstance(cell, datetime):
+                        processed_row[column_headers[index]] = cell.date()
+                    else:
+                        processed_row[column_headers[index]] = cell
                 print("post- if nullable")
             content.append(processed_row)
         if len(errors) > 0:
