@@ -1,6 +1,8 @@
 import wx
 import wx.grid
 from mygrid import MyGrid
+from openpyxl import load_workbook, Workbook
+import os
 from dates import getInvalidDates, get_some_years, turnAroundDate
 from bd import makeQueryMandanteCalendario, checkAllDates
 
@@ -104,8 +106,8 @@ class MainFrame(wx.Frame):
         self.add_row_button.Bind(wx.EVT_BUTTON, self.OnAddRow)
         
         # Add a button to add a column
-        self.add_col_button = wx.Button(panel, label="Agregar Columna")
-        self.add_col_button.Bind(wx.EVT_BUTTON, self.OnAddColumn)
+        # self.add_col_button = wx.Button(panel, label="Agregar Columna")
+        # self.add_col_button.Bind(wx.EVT_BUTTON, self.OnAddColumn)
 
         
         # Create a button to show the current grid data
@@ -267,6 +269,140 @@ class MainFrame(wx.Frame):
 
         #event.Skip()  # Continue to propagate the event
 
+    def makeVboxExcel(self, panel):
+        self.btn_load_excel = wx.Button(panel, label='Load Excel File')
+        vbox_buttons = wx.BoxSizer(wx.VERTICAL)
+        vbox_buttons.Add(self.btn_load_excel, flag=wx.ALL | wx.CENTER, border=10)
+
+        self.btn_load_excel.Bind(wx.EVT_BUTTON, self.on_load_excel)
+
+        self.text_ctrl = wx.TextCtrl(panel, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(400, 300))
+        vbox_buttons.Add(self.text_ctrl, flag=wx.ALL | wx.EXPAND, border=10)
+
+        panel.SetSizer(vbox_buttons)
+
+        
+
+
+    def on_load_excel(self, event):
+        wildcard = "Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*"
+        dialog = wx.FileDialog(self, "Open Excel file", wildcard=wildcard, style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+
+        if dialog.ShowModal() == wx.ID_CANCEL:
+            return  # User cancelled the file dialog
+
+        # Get the selected file path
+        path = dialog.GetPath()
+
+        # Load the Excel file using openpyxl
+        try:
+            workbook = load_workbook(filename=path)
+            sheet_name = 'Trabajadores'
+            # sheet = workbook.active
+            sheet = workbook[sheet_name]
+            self.makeExcel(sheet, dialog.GetFilename(), sheet_name)
+            # Read and display the content in the wx.TextCtrl
+            # content = ""
+            # for row in sheet.iter_rows(values_only=True):
+            #     content += "\t".join([str(cell) if cell is not None else "" for cell in row]) + "\n"
+
+            # self.text_ctrl.SetValue(content)
+        except Exception as e:
+            wx.LogError(f"Cannot open file '{os.path.basename(path)}'. Error: {str(e)}")
+
+    def makeExcel(self, sheet, file_name, sheet_name):
+        print("pre column headers")
+        column_headers = {index: cell.value for index, cell in enumerate(sheet[1], start=1)}
+        print("post column headers")
+        expected_headers = {
+            1 : 'Ítem',
+            2 : 'País de origen',
+            3 : 'Documento',
+            4 : 'Número CI',
+            5 : 'Nombre ',
+            6 : 'Ap. Paterno ',
+            7 : 'Ap. Materno',
+            8 : 'F. Nacimiento',
+            9 : 'Sexo',
+            10 : 'Región',
+            11 : 'Dirección',
+            12 : 'Comuna',
+            13 : 'Teléfono',
+            14 : 'ISAPRE',
+            15 : 'AFP',
+            16 : 'Pensionado', 
+            17 : 'Trabajador Dueño',
+            18 : 'Email',
+            19 : 'Discapacidad',
+            20 : 'Cargo',
+            21 : 'Artículo 22',
+            22 : 'Contrato',
+            23 : 'Fecha Inicio Contrato',
+            24 : 'Fecha Término Contrato',
+            25 : 'Jornada',
+            26 : 'Fecha Ingreso a la Obra'
+        }
+        nullable = [
+            0,
+            23
+        ]
+        content = []
+        errors = []
+        for row_index, row in enumerate(sheet.iter_rows(min_row = 2, values_only=True), start = 2):
+            processed_row = {}
+            for index,cell in enumerate(row, start = 1):
+                print("pre- if nullable")
+                if cell is None and index not in nullable: # Otras restricciones se pueden agregar aqui
+                    print("in- if nullable")
+                    errors.append(f"La columna {index} de la fila {row_index} por tener un valor nulo.")
+                    continue
+                else:
+                    print("else- if nullable")
+                    processed_row[column_headers[index]] = cell
+                print("post- if nullable")
+            content.append(processed_row)
+        if len(errors) > 0:
+            print("pre-append print errors")
+            self.text_ctrl.SetValue(self.printable_error(errors)) # Formatear errores para impresion
+            print("post-append print errors")
+        else:
+            print("pre- write excel")
+            self.write_excel(column_headers, content, file_name, sheet_name)
+            print("post- write excel")
+            # processed_row = [cell if cell is not None and index not in (nullable) else "" for index, cell in enumerate(row)]
+            # content += "\t".join(processed_row) + "\n"
+    def printable_error (self, errors):
+        printable = ""
+        for error in errors:
+            printable+= error+'\n'
+        return printable
+        
+    def write_excel(self, column_headers, content, file_name, sheet_name):
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = sheet_name
+
+
+        # Write column headers
+        headers = [header for _, header in sorted(column_headers.items())]
+        print("pre-append headers")
+        sheet.append(headers)
+        print("post-append headers")
+        # Write data rows
+        print(content)
+        for row_data in content:
+            row = [row_data.get(header, '') for _, header in sorted(column_headers.items())]
+            print(row)
+            print("pre-append row")
+            sheet.append(row)
+            print("post-append row")
+
+        # Save the workbook
+        workbook.save("cleaned_"+ file_name)
+        self.text_ctrl.SetValue("Se ha guardado una versión limpiada en excel") # Formatear errores para impresion
+        wx.MessageBox(f"Se ha guardado una versión limpiada en excel", "Archivo guardado", wx.OK | wx.ICON_INFORMATION)
+        pass
+
     def clipboardOutput(self, text):
         if wx.TheClipboard.Open():
             wx.TheClipboard.Clear()
@@ -285,6 +421,11 @@ class MainFrame(wx.Frame):
         notebook.AddPage(tab2, "Calendario de Cierre")
 
         self.makeVboxCalendar(tab2)
+
+        tab3 = wx.Panel(notebook)
+        notebook.AddPage(tab3, "Limpiar Excel")
+
+        self.makeVboxExcel(tab3)
 
         # vbox2 = wx.BoxSizer(wx.VERTICAL)
         # label2 = wx.StaticText(tab2, label="This is the second tab")
