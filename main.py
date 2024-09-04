@@ -353,7 +353,7 @@ class MainFrame(wx.Frame):
             processed_row = {}
             for index,cell in enumerate(row, start = 1):
                 print("pre- if nullable")
-                if cell is None and index not in nullable: # Otras restricciones se pueden agregar aqui
+                if (cell is None or cell == "") and index not in nullable: # Otras restricciones se pueden agregar aqui
                     print("in- if nullable")
                     errors.append(f"La columna {index} de la fila {row_index} por tener un valor nulo.")
                     continue
@@ -368,6 +368,7 @@ class MainFrame(wx.Frame):
         if len(errors) > 0:
             print("pre-append print errors")
             self.text_ctrl.SetValue(self.printable_error(errors)) # Formatear errores para impresion
+            self.write_excel(column_headers, content, "Con_errores_"+file_name, sheet_name)
             print("post-append print errors")
         else:
             print("pre- write excel")
