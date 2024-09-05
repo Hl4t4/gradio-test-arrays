@@ -6,6 +6,7 @@ from openpyxl import load_workbook, Workbook
 import os
 from dates import getInvalidDates, get_some_years, turnAroundDate
 from bd import makeQueryMandanteCalendario, checkAllDates
+from lists import nacionalidades, paises
 
 
 
@@ -312,9 +313,14 @@ class MainFrame(wx.Frame):
             wx.LogError(f"Cannot open file '{os.path.basename(path)}'. Error: {str(e)}")
 
     def makeExcel(self, sheet, file_name, sheet_name):
-        print("pre column headers")
-        column_headers = {index: cell.value for index, cell in enumerate(sheet[1], start=1)}
-        print("post column headers")
+        # print("pre column headers")
+        # column_headers = {index: cell.value for index, cell in enumerate(sheet[1], start=1)}
+        for i in range(1, sheet.max_row + 1):
+            column_headers = {index: cell.value for index, cell in enumerate(sheet[i], start=1) if cell.value is not None}
+            if len(column_headers) == sheet.max_column:
+                break
+        
+        # print("post column headers")
         expected_headers = {
             1 : 'Ítem',
             2 : 'País de origen',
@@ -343,44 +349,120 @@ class MainFrame(wx.Frame):
             25 : 'Jornada',
             26 : 'Fecha Ingreso a la Obra'
         }
+        alternative_headers = {
+            1 : 'Ítem',
+            2 : 'Nacionalidad',
+            3 : 'Documento',
+            4 : 'Número CI',
+            5 : 'Nombre',
+            6 : 'Ap. Paterno',
+            7 : 'Ap. Materno',
+            8 : 'F. Nacimiento',
+            9 : 'Sexo',
+            10 : 'Región',
+            11 : 'Dirección',
+            12 : 'Comuna',
+            13 : 'Teléfono',
+            14 : 'ISAPRE',
+            15 : 'AFP',
+            16 : 'Pensionado', 
+            17 : 'Trabajador Dueño',
+            18 : 'Email',
+            19 : 'Discapacidad',
+            20 : 'Cargo',
+            21 : 'Artículo 22',
+            22 : 'Contrato',
+            23 : 'Fecha Inicio Contrato',
+            24 : 'Fecha Término Contrato',
+            25 : 'Jornada',
+            26 : 'Fecha Ingreso a la Obra'
+        }
+        change_headers = {
+            "Nacionalidad": "País de origen"
+        }
+
+        if column_headers[2] == "Nacionalidad":
+            column_headers[2] = "País de origen"
+        # for key, value in change_headers.items(): POR HACER GENERICO
+        #     if key in expected_headers:
+                
+        #     pass
+
+        optional_headers = {
+            27: 'Faena'
+        }
         nullable = [
             1,
             24
         ]
+        date_headers = {
+            8,
+            23,
+            24,
+            26
+        }
+
         content = []
         errors = []
         for row_index, row in enumerate(sheet.iter_rows(min_row = 2, values_only=True), start = 2):
+            error_flag = False
+            contrato_indefinido = False
             processed_row = {}
-            for index,cell in enumerate(row, start = 1):
-                print("pre- if nullable")
+            for index, cell in enumerate(row, start = 1):
+                # print("pre- if nullable")
                 if (cell is None or cell == "") and index not in nullable: # Otras restricciones se pueden agregar aqui
-                    print("in- if nullable")
+                    # print("in- if nullable")
                     errors.append(f"La columna {index} de la fila {row_index} por tener un valor nulo.")
-                    continue
+                    error_flag = True
+                    break
                 else:
-                    print("else- if nullable")
-                    if isinstance(cell, datetime):
-                        processed_row[column_headers[index]] = cell.date()
+                    # print("else- if nullable")
+                    if index == 2:
+                        # print("pre-nacionalidades")
+                        if cell in nacionalidades:
+                            # print("in-nacionalidades")
+                            processed_row[column_headers[index]] = nacionalidades[cell]
+                            errors.append(f"La columna {index} de la fila {row_index} tener pais no nacionalidad, pero fue arreglado")
+                        elif cell in paises:
+                            # print("in-paises")
+                            processed_row[column_headers[index]] = cell
+                        else:
+                            # print("in-index2-error")
+                            errors.append(f"La columna {index} de la fila {row_index} el pais no es un valor valido")
+                            error_flag = True
+                            break
+                    elif index == 24 and contrato_indefinido:
+                        processed_row[column_headers[index]] = ""
+                        errors.append(f"La columna {index} de la fila {row_index} Deberia tener valor vacio, pero lo arreglamos por ti :)")
+                    if isinstance(cell, datetime) and index in date_headers:
+                        processed_row[column_headers[index]] = cell.strftime("%Y-%m-%d")
+                    elif isinstance(cell, datetime):
+                        errors.append(f"La columna {index} de la fila {row_index} por tener una fecha en una columna que no lo solicita")
+                        error_flag = True
+                        break
                     else:
+                        if index == 22 and cell == "INDEFINIDO":
+                            contrato_indefinido = True
                         processed_row[column_headers[index]] = cell
-                print("post- if nullable")
-            content.append(processed_row)
+                # print("post- if nullable")
+            if not error_flag:
+                content.append(processed_row)
         if len(errors) > 0:
-            print("pre-append print errors")
-            self.text_ctrl.SetValue(self.printable_error(errors)) # Formatear errores para impresion
+            # print("pre-append # print errors")
+            self.text_ctrl.SetValue(self.# printable_error(errors)) # Formatear errores para impresion
             self.write_excel(column_headers, content, "Con_errores_"+file_name, sheet_name)
-            print("post-append print errors")
+            # print("post-append # print errors")
         else:
-            print("pre- write excel")
+            # print("pre- write excel")
             self.write_excel(column_headers, content, file_name, sheet_name)
-            print("post- write excel")
+            # print("post- write excel")
             # processed_row = [cell if cell is not None and index not in (nullable) else "" for index, cell in enumerate(row)]
             # content += "\t".join(processed_row) + "\n"
-    def printable_error (self, errors):
-        printable = ""
+    def # printable_error (self, errors):
+        # printable = ""
         for error in errors:
-            printable+= error+'\n'
-        return printable
+            # printable+= error+'\n'
+        return # printable
         
     def write_excel(self, column_headers, content, file_name, sheet_name):
         workbook = Workbook()
@@ -390,22 +472,22 @@ class MainFrame(wx.Frame):
 
         # Write column headers
         headers = [header for _, header in sorted(column_headers.items())]
-        print("pre-append headers")
+        # print("pre-append headers")
         sheet.append(headers)
-        print("post-append headers")
+        # print("post-append headers")
         # Write data rows
-        print(content)
+        # print(content)
         for row_data in content:
             row = [row_data.get(header, '') for _, header in sorted(column_headers.items())]
-            print(row)
-            print("pre-append row")
+            # print(row)
+            # print("pre-append row")
             sheet.append(row)
-            print("post-append row")
+            # print("post-append row")
 
         # Save the workbook
         workbook.save("cleaned_"+ file_name)
-        self.text_ctrl.SetValue("Se ha guardado una versión limpiada en excel") # Formatear errores para impresion
-        wx.MessageBox(f"Se ha guardado una versión limpiada en excel", "Archivo guardado", wx.OK | wx.ICON_INFORMATION)
+        # self.text_ctrl.SetValue("Se ha guardado una versión limpiada en excel") # Formatear errores para impresion
+        wx.MessageBox(f"Se ha guardado una versión limpiada en excel cleaned_{file_name}", "Archivo guardado", wx.OK | wx.ICON_INFORMATION)
         pass
 
     def clipboardOutput(self, text):
