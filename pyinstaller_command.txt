@@ -1,1 +1,1 @@
-pyinstaller -F --icon=D:\proyectos\gradio-test-arrays\scl_misc.ico --noconsole D:\proyectos\gradio-test-arrays\main.py
+pyinstaller -F --icon=D:\proyectos\gradio-test-arrays\scl_misc.ico --noconsole D:\proyectos\gradio-test-arrays\main_scl.py
