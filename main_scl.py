@@ -538,7 +538,84 @@ class MainFrame(wx.Frame):
         workbook.save("cleaned_"+ file_name)
         # self.text_ctrl.SetValue("Se ha guardado una versión limpiada en excel") # Formatear errores para impresion
         wx.MessageBox(f"Se ha guardado una versión limpiada en excel cleaned_{file_name}", "Archivo guardado", wx.OK | wx.ICON_INFORMATION)
-        pass
+
+    def on_load_file(self):
+        file_content = []
+        path = ''
+        with wx.FileDialog(self, "Abrir archivo", wildcard="All files (*.*)|*.*",
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fileDialog:
+
+            if fileDialog.ShowModal() == wx.ID_CANCEL:
+                return  # User cancelled the file selection
+
+            # Get the file path
+            path = fileDialog.GetPath()
+
+            # Read the file content and display it in the text control
+            try:
+                with open(path, 'r', encoding='utf-8') as file:
+                    file_content = file.readlines()
+            except IOError:
+                wx.LogError(f"No se pudo abrir el archivo en '{path}'.")
+        return [file_content, path]
+    
+    def comment_file(self, file_content):
+        new_file_content = []
+        bracket_count = 0
+        inner_comment_flag = False
+        comment_flag = False
+        commented_count = 0
+        for line in file_content:
+            if '_20' in line and 'function' in line:
+                comment_flag = True
+                new_file_content.append('/*')
+                commented_count += 1
+            if '/*' in line and comment_flag:
+                inner_comment_flag = True
+            if inner_comment_flag:
+                new_file_content.append('// ' + line.replace('/*', '').replace('*/', ''))
+            else:
+                new_file_content.append(line)    
+            if '*/' in line and inner_comment_flag:
+                inner_comment_flag = False
+            if comment_flag:
+                bracket_count += line.count('{')
+                bracket_count -= line.count('}')
+                if bracket_count <= 0: # Caso de menor significaria algo no bien cerrado
+                    new_file_content.append('*/')
+                    comment_flag = False
+        return [new_file_content, commented_count]
+    
+    def write_commented_file(self, file_content, path):
+        with open(file=path, mode='w', encoding='utf-8') as new_file:
+            new_file.writelines(file_content)
+
+    def proccess_file(self, event):
+        response = self.on_load_file()
+        lines = response[0]
+        path = response[1]
+        splitted_path = path.rsplit('.', 1)
+        splitted_file_name = splitted_path[0].rsplit('\\', 1)
+        new_path = splitted_file_name[0] + '\\commented_' + splitted_file_name[1] + '.' +  splitted_path[1]
+        new_file_response = self.comment_file(lines)
+        new_file_content = new_file_response[0]
+        commented_count = new_file_response[1]
+        self.write_commented_file(new_file_content, new_path)
+        self.text_comments_ctrl.SetValue(f'Se han comentado {commented_count} funciones y guardado en el archivo {new_path}')
+        wx.MessageBox(f"Se ha guardado un archivo", "Archivo guardado", wx.OK | wx.ICON_INFORMATION)
+
+    def makeVboxComments(self, panel):
+        self.btn_load_file = wx.Button(panel, label='Cargar Archivo')
+        vbox_buttons = wx.BoxSizer(wx.VERTICAL)
+        vbox_buttons.Add(self.btn_load_file, flag=wx.ALL | wx.CENTER, border=10)
+
+        self.btn_load_file.Bind(wx.EVT_BUTTON, self.proccess_file)
+
+        self.text_comments_ctrl = wx.TextCtrl(panel, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(400, 300))
+        vbox_buttons.Add(self.text_comments_ctrl, flag=wx.ALL | wx.EXPAND, border=10)
+
+        panel.SetSizer(vbox_buttons)
+
 
     def clipboardOutput(self, text):
         if wx.TheClipboard.Open():
@@ -563,6 +640,13 @@ class MainFrame(wx.Frame):
         notebook.AddPage(tab3, "Limpiar Excel")
 
         self.makeVboxExcel(tab3)
+
+        tab4 = wx.Panel(notebook)
+        notebook.AddPage(tab4, "Comentar _20xx")
+
+        self.makeVboxComments(tab4)
+
+
 
         # vbox2 = wx.BoxSizer(wx.VERTICAL)
         # label2 = wx.StaticText(tab2, label="This is the second tab")
