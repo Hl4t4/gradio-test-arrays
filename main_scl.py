@@ -568,7 +568,7 @@ class MainFrame(wx.Frame):
         for line in file_content:
             if '_20' in line and 'function' in line:
                 comment_flag = True
-                new_file_content.append('/*')
+                new_file_content.append('/* COMENTADO AUTOMATICAMENTE')
                 commented_count += 1
             if '/*' in line and comment_flag:
                 inner_comment_flag = True
