@@ -561,29 +561,41 @@ class MainFrame(wx.Frame):
     
     def comment_file(self, file_content):
         new_file_content = []
-        bracket_count = 0
+        left_bracket_count = 0
+        right_bracket_count = 0
         inner_comment_flag = False
+        already_commented_flag = False
         comment_flag = False
         commented_count = 0
         for line in file_content:
-            if '_20' in line and 'function' in line:
-                comment_flag = True
-                new_file_content.append('/* COMENTADO AUTOMATICAMENTE')
-                commented_count += 1
-            if '/*' in line and comment_flag:
-                inner_comment_flag = True
-            if inner_comment_flag:
-                new_file_content.append('// ' + line.replace('/*', '').replace('*/', ''))
+            if '/* COMENTADO AUTOMATICAMENTE' in line:
+                already_commented_flag = True
+            elif '*/ // COMENTADO AUTOMATICAMENTE' in line:
+                already_commented_flag = False
+            if not already_commented_flag:
+                if '_20' in line and 'function' in line:
+                    comment_flag = True
+                    new_file_content.append('/* COMENTADO AUTOMATICAMENTE ')
+                    commented_count += 1
+                if '/*' in line and comment_flag:
+                    inner_comment_flag = True
+                if inner_comment_flag:
+                    new_file_content.append('// ' + line.replace('/*', '').replace('*/', ''))
+                else:
+                    new_file_content.append(line)
+                if '*/' in line and inner_comment_flag:
+                    inner_comment_flag = False
+                if comment_flag:
+                    splitted_line = line.split('//')[0]
+                    left_bracket_count += splitted_line.count('{')
+                    right_bracket_count += splitted_line.count('}')
+                    if left_bracket_count > 0 and left_bracket_count - right_bracket_count <= 0: # Caso de menor significaria algo no bien cerrado
+                        new_file_content.append('*/ // COMENTADO AUTOMATICAMENTE')
+                        comment_flag = False
+                        left_bracket_count = 0
+                        right_bracket_count = 0
             else:
-                new_file_content.append(line)    
-            if '*/' in line and inner_comment_flag:
-                inner_comment_flag = False
-            if comment_flag:
-                bracket_count += line.count('{')
-                bracket_count -= line.count('}')
-                if bracket_count <= 0: # Caso de menor significaria algo no bien cerrado
-                    new_file_content.append('*/')
-                    comment_flag = False
+                new_file_content.append(line)
         return [new_file_content, commented_count]
     
     def write_commented_file(self, file_content, path):
