@@ -602,7 +602,7 @@ class MainFrame(wx.Frame):
         with open(file=path, mode='w', encoding='utf-8') as new_file:
             new_file.writelines(file_content)
 
-    def proccess_file(self, event):
+    def process_file(self, event):
         response = self.on_load_file()
         lines = response[0]
         path = response[1]
@@ -616,12 +616,74 @@ class MainFrame(wx.Frame):
         self.text_comments_ctrl.SetValue(f'Se han comentado {commented_count} funciones y guardado en el archivo {new_path}')
         wx.MessageBox(f"Se ha guardado un archivo", "Archivo guardado", wx.OK | wx.ICON_INFORMATION)
 
+    def on_load_files(self):
+        file_paths = []
+        dialog = wx.FileDialog(self, "Abrir archivo", wildcard="All files (*.*)|*.*", style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
+        # if dialog.ShowModal() == wx.ID_CANCEL:
+        #     return  # User cancelled the file selection
+        if dialog.ShowModal() == wx.ID_OK:
+            # Get the file paths
+            file_paths = dialog.GetPaths()
+        dialog.Destroy()
+        return file_paths
+    
+    def extract_functions(self, file_content):
+        new_file_content = []
+        deprecated_count = 0
+        for line in file_content:
+            if '_20' in line and 'function' in line:
+                first_split = line.split('function ')
+                second_split = first_split[1].split('(')
+                new_file_content.append(second_split[0] + '\n')
+                deprecated_count += 1
+        return [new_file_content, deprecated_count]
+
+    def write_processed_file(self, file_content, path):
+        splitted_path = path.rsplit('.', 1)
+        splitted_file_name = splitted_path[0].rsplit('\\', 1)
+        current_file_path = os.path.abspath(__file__)
+        current_dir = os.path.dirname(current_file_path)
+        new_folder_path = os.path.join(current_dir, "deprecated_functions")
+        if not os.path.exists(new_folder_path):
+            os.makedirs(new_folder_path)
+        new_path = os.path.join(new_folder_path, splitted_file_name[1] + '.' +  splitted_path[1])
+        with open(file=new_path, mode='w', encoding='utf-8') as new_file:
+            new_file.writelines(file_content)
+        return new_path
+
+    def process_files(self, event):
+        file_paths = self.on_load_files()
+        new_files = []
+        if len(file_paths) > 0:
+            for path in file_paths:
+                # Read the file content and display it in the text control
+                try:
+                    with open(path, 'r', encoding='utf-8') as file:
+                        file_content = file.readlines()
+                        response = self.extract_functions(file_content)
+                        new_files.append({"path": path, "file_content": response[0], "deprecated_count": response[1]})
+                except IOError:
+                    wx.LogError(f"No se pudo abrir el archivo en '{path}'.")
+        output_text = ""
+        saved_files = 0
+        for new_file in new_files:
+            if new_file["deprecated_count"] > 0:
+                saved_files += 1
+                self.write_processed_file(new_file["file_content"], new_file["path"])
+                output_text+=f'Se han encontrado {new_file["deprecated_count"]} funciones y guardado en el archivo {new_file["path"]}\n'
+        if saved_files > 0:
+            wx.MessageBox(f"Se han guardado {saved_files} archivos", "Archivos guardados", wx.OK | wx.ICON_INFORMATION)
+        self.text_comments_ctrl.SetValue(output_text)
+
     def makeVboxComments(self, panel):
         self.btn_load_file = wx.Button(panel, label='Cargar Archivo')
         vbox_buttons = wx.BoxSizer(wx.VERTICAL)
         vbox_buttons.Add(self.btn_load_file, flag=wx.ALL | wx.CENTER, border=10)
+        self.btn_load_file.Bind(wx.EVT_BUTTON, self.process_file)
 
-        self.btn_load_file.Bind(wx.EVT_BUTTON, self.proccess_file)
+        self.btn_load_files = wx.Button(panel, label='Cargar Archivos para obtener funciones')
+        vbox_buttons.Add(self.btn_load_files, flag=wx.ALL | wx.CENTER, border=10)
+        self.btn_load_files.Bind(wx.EVT_BUTTON, self.process_files)
 
         self.text_comments_ctrl = wx.TextCtrl(panel, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(400, 300))
         vbox_buttons.Add(self.text_comments_ctrl, flag=wx.ALL | wx.EXPAND, border=10)

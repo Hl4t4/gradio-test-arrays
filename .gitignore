@@ -5,3 +5,4 @@ main.spec
 /src
 *.xlsx
 *.7z
+/deprecated_functions
