@@ -5,11 +5,22 @@ from mygrid import MyGrid
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import PatternFill, Border, Side
 import os
+import sys
+import atexit
 from dates import getInvalidDates, get_some_years, turnAroundDate
 from bd import makeQueryMandanteCalendario, checkAllDates
 from lists import nacionalidades, paises
 
-
+def get_application_path():
+    if getattr(sys, 'frozen', False):  # Check if running as a PyInstaller bundle
+        # Get the path to the executable
+        return os.path.abspath(sys.executable)
+    else:
+        # Get the path to the script file
+        return os.path.abspath(__file__)
+    
+def clean_up():
+    print("Cerrando procesos...")
 
 class MainFrame(wx.Frame):
     """
@@ -641,7 +652,7 @@ class MainFrame(wx.Frame):
     def write_processed_file(self, file_content, path):
         splitted_path = path.rsplit('.', 1)
         splitted_file_name = splitted_path[0].rsplit('\\', 1)
-        current_file_path = os.path.abspath(__file__)
+        current_file_path = get_application_path()
         current_dir = os.path.dirname(current_file_path)
         new_folder_path = os.path.join(current_dir, "deprecated_functions")
         if not os.path.exists(new_folder_path):
@@ -669,8 +680,8 @@ class MainFrame(wx.Frame):
         for new_file in new_files:
             if new_file["deprecated_count"] > 0:
                 saved_files += 1
-                self.write_processed_file(new_file["file_content"], new_file["path"])
-                output_text+=f'Se han encontrado {new_file["deprecated_count"]} funciones y guardado en el archivo {new_file["path"]}\n'
+                new_path = self.write_processed_file(new_file["file_content"], new_file["path"])
+                output_text+=f'Se han encontrado {new_file["deprecated_count"]} funciones y guardado en el archivo {new_path}\n'
         if saved_files > 0:
             wx.MessageBox(f"Se han guardado {saved_files} archivos", "Archivos guardados", wx.OK | wx.ICON_INFORMATION)
         self.text_comments_ctrl.SetValue(output_text)
@@ -743,3 +754,4 @@ if __name__ == '__main__':
     frm = MainFrame(None, title='SubcontrataLey Misc. Functions')
     frm.Show()
     app.MainLoop()
+    atexit.register(clean_up)
